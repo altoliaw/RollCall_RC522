@@ -1,0 +1,6 @@
+[submodule ".vscode"]
+	path = .vscode
+	url = git@github.com:altoliaw/.vscode.stm32.git
+[submodule ".settings"]
+	path = .settings
+	url = git@github.com:altoliaw/.settings.stm32.git
