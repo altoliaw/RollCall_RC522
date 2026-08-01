@@ -1,9 +1,9 @@
-# STM32 藍芽 RFID 無線點名機專案 (Bluetooth RFID Roll Call Terminal)
-
 本專案旨在建置一套適用於教室場景的「無線獨立點名終端機」。系統透過 STM32 讀取 RFID/NFC 卡片卡號，經由蜂鳴器給予聲光回饋，並透過 HC-06 藍芽模組將卡號無線傳輸至教室電腦的虛擬 COM 埠，最後由電腦端 Python 腳本即時紀錄至資料庫（SQLite/MySQL）。
 
 ---
+
 ## 系統架構圖 (System Architecture)
+
 ```
 [學生刷卡] ➔ [RC522 讀卡模組]
 │ (SPI1)
@@ -14,10 +14,9 @@
 [HC-06 藍芽模組]
 │
 └─── (Bluetooth 無線串口傳輸) ───┐
-                                 ▼
+                                ▼
 [筆電 / 電腦 (資料庫)]
 (自動識別為 Virtual COM Port)
-
 ```
 ---
 
@@ -91,7 +90,8 @@
 ### 4. TIM2 PWM 設定 (無源蜂鳴器)
 * **Clock Source**: Internal Clock
 * **Channel 1**: PWM Generation CH1 (`PA15`)
-* **Prescaler (PSC)**: `83` (若定時器時脈為 84MHz，將計數頻率除降為 1 MHz)
+* **Prescaler (PSC)**: **`15`**
+  * *說明*：在未啟用 PLL 情況下，系統採用內部 HSI 時脈 (16 MHz)。$\text{PSC}=15$ 使得定時器計數頻率降為 $\frac{16\,\text{MHz}}{15+1} = 1\,\text{MHz}$（即每秒計數 $1,000,000$ 次），後續音頻計算公式得以精確成立。
 * **Counter Period (ARR)**: `1000` (後續可在程式碼中動態修改 ARR 以切換音調)
 
 ---
@@ -115,10 +115,11 @@ void Send_Card_ID_Via_Bluetooth(uint8_t *uid) {
     HAL_UART_Transmit(&huart3, (uint8_t*)bt_buffer, strlen(bt_buffer), 100);
 }
 ```
-
 2. 無源蜂鳴器「叮咚～」音效控制 (PWM Output)
 ```C
 void Play_DingDong(void) {
+    // 註：定時器計數頻率已被 PSC=15 設定為 1 MHz (1,000,000 Hz)
+    
     // 「叮」 (高音 C6 ≒ 1046 Hz)
     __HAL_TIM_SET_AUTORELOAD(&htim2, 1000000 / 1046);
     __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, (1000000 / 1046) / 2); // 50% 占空比
