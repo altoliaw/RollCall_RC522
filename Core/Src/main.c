@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-// #include "../../Modules/RC522/Inc/rc522.h" /* RC522 driver module: declarations only, definitions pending. */
+// #include "../../Modules/RC522/Inc/rc522.h" /* Referencing the RC522 driver module, whose definitions are still pending. */
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,8 +48,8 @@ TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
-// uint8_t cardUid[7];   /* Buffer for the UID returned by RC522_ReadCardUID(). */
-// uint8_t cardUidLen;   /* Actual UID length (4 or 7 bytes) written by RC522_ReadCardUID(). */
+// uint8_t cardUid[7];   /* Storing the UID returned by RC522_ReadCardUID(). */
+// uint8_t cardUidLen;   /* Storing the actual UID length (4 or 7 bytes) written by RC522_ReadCardUID(). */
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -104,7 +104,7 @@ int main(void)
   MX_TIM2_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  // RC522_Init(&hspi1); /* Bring up the RC522 reader once definitions are implemented. */
+  // RC522_Init(&hspi1); /* Bringing up the RC522 reader once its definitions are implemented. */
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -113,7 +113,7 @@ int main(void)
   {
     // if (RC522_ReadCardUID(cardUid, &cardUidLen) == MI_OK)
     // {
-    //   /* TODO: forward cardUid/cardUidLen to Send_Card_ID_Via_Bluetooth(). */
+    //   /* TODO: Forwarding cardUid/cardUidLen to Send_Card_ID_Via_Bluetooth(). */
     // }
     /* USER CODE END WHILE */
 
