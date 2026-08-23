@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-// #include "../../Modules/RC522/Inc/rc522.h" /* Referencing the RC522 driver module, whose definitions are still pending. */
+#include <stdio.h> /* Bringing in snprintf() for formatting the UID string before transmission. */
+#include "../../Modules/RC522/Inc/rc522.h" /* Bringing in the RC522 driver's public interface for the wiring test. */
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,8 +49,9 @@ TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
-// uint8_t cardUid[7];   /* Storing the UID returned by RC522_ReadCardUID(). */
-// uint8_t cardUidLen;   /* Storing the actual UID length (4 or 7 bytes) written by RC522_ReadCardUID(). */
+uint8_t cardUid[7];   /* Holding the UID returned by RC522_ReadCardUID(). */
+uint8_t cardUidLen;   /* Holding the actual UID length (4 or 7 bytes) written by RC522_ReadCardUID(). */
+uint8_t uartMsg[64];  /* Buffering the formatted string transmitted over huart3. */
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -104,17 +106,31 @@ int main(void)
   MX_TIM2_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  // RC522_Init(&hspi1); /* Bringing up the RC522 reader once its definitions are implemented. */
+  HAL_StatusTypeDef rc522InitStatus = RC522_Init(&hspi1); /* Bringing up the RC522 reader before entering the main loop. */
+  if (rc522InitStatus == HAL_OK)
+  {
+    HAL_UART_Transmit(&huart3, (uint8_t *)"RC522 Init OK\r\n", 16, HAL_MAX_DELAY);
+  }
+  else
+  {
+    HAL_UART_Transmit(&huart3, (uint8_t *)"RC522 Init FAIL\r\n", 18, HAL_MAX_DELAY);
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // if (RC522_ReadCardUID(cardUid, &cardUidLen) == MI_OK)
-    // {
-    //   /* TODO: Forwarding cardUid/cardUidLen to Send_Card_ID_Via_Bluetooth(). */
-    // }
+    if (RC522_ReadCardUID(cardUid, &cardUidLen) == MI_OK)
+    {
+      int len = snprintf((char *)uartMsg, sizeof(uartMsg),
+                          "UID(%u): %02X %02X %02X %02X %02X %02X %02X\r\n",
+                          cardUidLen, cardUid[0], cardUid[1], cardUid[2], cardUid[3],
+                          cardUid[4], cardUid[5], cardUid[6]); /* Formatting only the leading cardUidLen bytes are meaningful; trailing zeros print harmlessly for 4-byte UIDs. */
+      HAL_UART_Transmit(&huart3, uartMsg, (uint16_t)len, HAL_MAX_DELAY);
+      HAL_Delay(500); /* Throttling repeated prints while a card remains resting on the reader. */
+      /* TODO: Forwarding cardUid/cardUidLen to Send_Card_ID_Via_Bluetooth() once the wiring test passes. */
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
