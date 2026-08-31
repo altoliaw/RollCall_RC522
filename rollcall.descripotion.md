@@ -9,7 +9,7 @@
 │ (SPI1)
 ▼
 [STM32F767ZI 主控] ──(TIM2 PWM)──> [無源蜂鳴器 (叮咚聲)]
-│ (USART3)
+│ (USART6, Zio 排針 D1/D0)
 ▼
 [HC-06 藍芽模組]
 │
@@ -50,13 +50,15 @@
 | **MISO** | **PA6** | `SPI1_MISO` | SPI 主機輸入 |
 | **MOSI** | **PA7** | `SPI1_MOSI` | SPI 主機輸出 |
 
-### 2. HC-06 藍芽模組 (USART3)
+### 2. HC-06 藍芽模組 (USART6)
+> ⚠️ **腳位選用說明**：Nucleo-144 系列（含 F767ZI）出廠預設將 **PD8/PD9（USART3）內部直接接到板載 ST-LINK**，用來做除錯用的虛擬 COM Port，**並未接到 Morpho 排針**（除非額外改焊板上的 Solder Bridge SB4/SB5/SB6/SB7）。若沿用 PD8/PD9 接藍芽模組，預設狀態下收不到資料。因此改用 **USART6（對應 Zio/Arduino 相容排針上標示的 D1/D0）**，此組腳位出廠即已接到排針、與 ST-LINK 除錯功能互不衝突，不需要動任何焊點。
+
 | HC-06 腳位 | STM32 Nucleo-F767ZI 引腳 | STM32 腳位功能 | 備註 |
 | :--- | :--- | :--- | :--- |
 | **VCC** | **5V** (或 3.3V) | Power | 帶有 3.3V 穩壓 IC |
 | **GND** | **GND** | Ground | 共地 |
-| **TXD** | **PD9** | `USART3_RX` | **交叉連接** (模組 TX $\rightarrow$ STM32 RX) |
-| **RXD** | **PD8** | `USART3_TX` | **交叉連接** (模組 RX $\rightarrow$ STM32 TX) |
+| **TXD** | **PG9** (排針標示 `D0`) | `USART6_RX` | **交叉連接** (模組 TX $\rightarrow$ STM32 RX) |
+| **RXD** | **PG14** (排針標示 `D1`) | `USART6_TX` | **交叉連接** (模組 RX $\rightarrow$ STM32 TX) |
 
 ### 3. 無源蜂鳴器 (TIM2_CH1)
 | 蜂鳴器腳位 | STM32 Nucleo-F767ZI 引腳 | STM32 腳位功能 | 備註 |
@@ -80,8 +82,9 @@
 * **PB6** $\rightarrow$ 設為 `GPIO_Output` (標籤：`RC522_CS`)，預設 Level 設為 **High**。
 * **PA4** $\rightarrow$ 設為 `GPIO_Output` (標籤：`RC522_RST`)，預設 Level 設為 **High**。
 
-### 3. USART3 設定 (HC-06 藍芽)
+### 3. USART6 設定 (HC-06 藍芽)
 * **Mode**: Asynchronous
+* **GPIO**: `PG9` (`USART6_RX`) / `PG14` (`USART6_TX`)，即 Zio 排針上標示 `D0` / `D1`
 * **Baud Rate**: **9600** (HC-06 預設通訊速率)
 * **Word Length**: 8 Bits
 * **Parity**: None
@@ -111,8 +114,8 @@ void Send_Card_ID_Via_Bluetooth(uint8_t *uid) {
     snprintf(bt_buffer, sizeof(bt_buffer), "CARD:%02X%02X%02X%02X\r\n", 
              uid[0], uid[1], uid[2], uid[3]);
 
-    // 經由 USART3 透過 HC-06 無線傳送給電腦
-    HAL_UART_Transmit(&huart3, (uint8_t*)bt_buffer, strlen(bt_buffer), 100);
+    // 經由 USART6 透過 HC-06 無線傳送給電腦
+    HAL_UART_Transmit(&huart6, (uint8_t*)bt_buffer, strlen(bt_buffer), 100);
 }
 ```
 2. 無源蜂鳴器「叮咚～」音效控制 (PWM Output)
