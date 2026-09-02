@@ -328,6 +328,5 @@ python main.py
 
 ### 6.8 待辦事項
 
-- [ ] MCU 端把除錯用的 `UID(%u): ...` 輸出格式，換成正式的 `Send_Card_ID_Via_Bluetooth()`／`CARD:XXXXXX` 協定（見 `RC522Test.md` 第 8～9 節）。
 - [ ] Host 端目前用 `print()` 輸出訊息，之後若要長期運行，可考慮換成 `logging` 並寫檔，方便事後追查漏刷/異常。
 - [ ] 「輸入學號」目前是 CLI `input()` 阻塞式提示；若要在教室連續刷卡場景下使用，評估是否需要改成非阻塞或簡易 GUI。

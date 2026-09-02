@@ -324,6 +324,5 @@ The program can be interrupted safely with `Ctrl+C`, since `main.py` catches `Ke
 
 ### 6.8 Outstanding Items
 
-- [ ] Replace the MCU-side debug-format output `UID(%u): ...` with the production `Send_Card_ID_Via_Bluetooth()` / `CARD:XXXXXXXX` protocol (see Sections 8–9 of `RC522Test.md`).
 - [ ] The Host side currently uses `print()` for all output; for sustained long-term operation, consider switching to the `logging` module with file output to simplify post-hoc investigation of missed or anomalous readings.
 - [ ] The student-number prompt is currently a blocking CLI `input()` call; evaluate whether a non-blocking approach or a lightweight GUI is needed to support continuous card-tapping in a classroom setting.
