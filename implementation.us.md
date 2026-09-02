@@ -266,6 +266,30 @@ Read logic in `config.py`: a value is taken from `.env` when present, and falls 
 - `db_path` corresponds to the `DB_PATH` value in `.env`, defaulting to `rollcall.db`, and is created in the working directory in effect when `python main.py` is executed.
 - After the first run, the contents of the `cards` and `attendance` tables in `rollcall.db` may be inspected using DB Browser for SQLite or the `sqlite3` command-line tool.
 
+#### 6.5.1 Table Schema
+
+`init_db()` (`db.py:24-51`) creates the following two tables at program start-up (`CREATE TABLE IF NOT EXISTS`, so an existing database is left untouched); the original column-level analysis is given in Section 4 of `SA.md`.
+
+**`cards`** (one row per registered card, written once at registration time)
+
+| Column | Type | Constraint | Description |
+| :--- | :--- | :--- | :--- |
+| `card_uid` | TEXT | PRIMARY KEY | The card's UID (a hexadecimal string), serving as its unique identifier. |
+| `student_id` | TEXT | NOT NULL | The student number. |
+| `student_name` | TEXT | Nullable | The student's name (optional at registration). |
+| `bound_at` | TEXT | NOT NULL | The timestamp at which the card was bound (registered). |
+
+**`attendance`** (one row per tap, appended each time an already-registered card is read)
+
+| Column | Type | Constraint | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | A sequential row identifier. |
+| `card_uid` | TEXT | NOT NULL, FOREIGN KEY → `cards(card_uid)` | The UID of the corresponding card. |
+| `student_id` | TEXT | NOT NULL | The student number, looked up from `cards` at the time of the write. |
+| `checked_at` | TEXT | NOT NULL | The timestamp of this attendance check-in. |
+
+The corresponding accessor functions are `find_card()`, which looks up `cards` by `card_uid`; `bind_card()`, which inserts a new binding into `cards`; and `record_attendance()`, which appends one row to `attendance`.
+
 ---
 
 ### 6.6 Execution

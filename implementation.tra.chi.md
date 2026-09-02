@@ -270,6 +270,30 @@ DB_PATH=rollcall.db
 - `db_path` 對應 `.env` 的 `DB_PATH`，預設 `rollcall.db`，會建在執行 `python main.py` 當下的工作目錄。
 - 第一次執行後，可用 `DB Browser for SQLite` 或 `sqlite3` CLI 打開 `rollcall.db` 檢視 `cards`／`attendance` 兩張表的內容。
 
+#### 6.5.1 資料表結構 (Schema)
+
+`init_db()`（`db.py:24-51`）會在程式啟動時建立以下兩張表（`CREATE TABLE IF NOT EXISTS`，已存在則不動作），完整欄位設計原始分析見 `SA.md` 第 4 節：
+
+**`cards`**（每張已註冊卡片一筆，註冊時寫入一次）
+
+| 欄位 | 型別 | 限制 | 說明 |
+| :--- | :--- | :--- | :--- |
+| `card_uid` | TEXT | PRIMARY KEY | 卡片 UID（十六進位字串），卡片的唯一識別碼 |
+| `student_id` | TEXT | NOT NULL | 學號 |
+| `student_name` | TEXT | 可為 NULL | 姓名（註冊時可選填） |
+| `bound_at` | TEXT | NOT NULL | 綁定（註冊）時間戳 |
+
+**`attendance`**（每次刷卡點名一筆，每次偵測到已註冊卡片就新增一筆）
+
+| 欄位 | 型別 | 限制 | 說明 |
+| :--- | :--- | :--- | :--- |
+| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | 流水號 |
+| `card_uid` | TEXT | NOT NULL, FOREIGN KEY → `cards(card_uid)` | 對應的卡片 UID |
+| `student_id` | TEXT | NOT NULL | 學號（寫入當下從 `cards` 查得的值） |
+| `checked_at` | TEXT | NOT NULL | 本次刷卡（點名）時間戳 |
+
+對應的存取函式：`find_card()` 依 `card_uid` 查詢 `cards`；`bind_card()` 寫入新的 `cards` 綁定紀錄；`record_attendance()` 寫入一筆 `attendance` 紀錄。
+
 ---
 
 ### 6.6 執行
