@@ -68,6 +68,28 @@ static void MX_USART6_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+/**
+  * @brief Plays a two-note "ding-dong" confirmation tone on the passive buzzer.
+  * @note  TIM2's Prescaler=15 configures its counting frequency to 1 MHz (1,000,000 Hz),
+  *        so ARR/CCR values below are derived directly from that 1 MHz tick rate.
+  */
+static void Play_DingDong(void)
+{
+  /* Playing the "ding" note (high pitch, C6, approximately 1046 Hz). */
+  __HAL_TIM_SET_AUTORELOAD(&htim2, 1000000 / 1046);
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, (1000000 / 1046) / 2); /* 50% duty cycle. */
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  HAL_Delay(100);
+
+  /* Playing the "dong" note (low pitch, G5, approximately 784 Hz). */
+  __HAL_TIM_SET_AUTORELOAD(&htim2, 1000000 / 784);
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, (1000000 / 784) / 2);
+  HAL_Delay(200);
+
+  /* Stopping PWM output, silencing the buzzer. */
+  HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -123,6 +145,7 @@ int main(void)
   {
     if (RC522_ReadCardUID(cardUid, &cardUidLen) == MI_OK)
     {
+      Play_DingDong(); /* Giving audible confirmation of the tap before the UID is transmitted. */
       // int len = snprintf((char *)uartMsg, sizeof(uartMsg),
       //                     "UID(%u): %02X %02X %02X %02X %02X %02X %02X\r\n",
       //                     cardUidLen, cardUid[0], cardUid[1], cardUid[2], cardUid[3],
