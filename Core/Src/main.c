@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h> /* Bringing in snprintf() for formatting the UID string before transmission. */
+#include "../../Modules/RC522/Inc/rc522.h" /* Bringing in the RC522 driver's public interface for the wiring test. */
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,10 +46,12 @@ SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim2;
 
-UART_HandleTypeDef huart3;
+UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
-
+uint8_t cardUid[7];   /* Holding the UID returned by RC522_ReadCardUID(). */
+uint8_t cardUidLen;   /* Holding the actual UID length (4 or 7 bytes) written by RC522_ReadCardUID(). */
+uint8_t uartMsg[64];  /* Buffering the formatted string transmitted over huart6. */
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -57,13 +60,35 @@ static void MPU_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM2_Init(void);
-static void MX_USART3_UART_Init(void);
+static void MX_USART6_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+/**
+  * @brief Plays a two-note "ding-dong" confirmation tone on the passive buzzer.
+  * @note  TIM2's Prescaler=15 configures its counting frequency to 1 MHz (1,000,000 Hz),
+  *        so ARR/CCR values below are derived directly from that 1 MHz tick rate.
+  */
+static void Play_DingDong(void)
+{
+  /* Playing the "ding" note (high pitch, C6, approximately 1046 Hz). */
+  __HAL_TIM_SET_AUTORELOAD(&htim2, 1000000 / 1046);
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, (1000000 / 1046) / 2); /* 50% duty cycle. */
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  HAL_Delay(100);
+
+  /* Playing the "dong" note (low pitch, G5, approximately 784 Hz). */
+  __HAL_TIM_SET_AUTORELOAD(&htim2, 1000000 / 784);
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, (1000000 / 784) / 2);
+  HAL_Delay(200);
+
+  /* Stopping PWM output, silencing the buzzer. */
+  HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
+}
 
 /* USER CODE END 0 */
 
@@ -101,15 +126,39 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_TIM2_Init();
-  MX_USART3_UART_Init();
+  MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_StatusTypeDef rc522InitStatus = RC522_Init(&hspi1); /* Bringing up the RC522 reader before entering the main loop. */
+  if (rc522InitStatus == HAL_OK)
+  {
+    HAL_UART_Transmit(&huart6, (uint8_t *)"RC522 Init OK\r\n", 16, HAL_MAX_DELAY);
+  }
+  else
+  {
+    HAL_UART_Transmit(&huart6, (uint8_t *)"RC522 Init FAIL\r\n", 18, HAL_MAX_DELAY);
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    if (RC522_ReadCardUID(cardUid, &cardUidLen) == MI_OK)
+    {
+      Play_DingDong(); /* Giving audible confirmation of the tap before the UID is transmitted. */
+      // int len = snprintf((char *)uartMsg, sizeof(uartMsg),
+      //                     "UID(%u): %02X %02X %02X %02X %02X %02X %02X\r\n",
+      //                     cardUidLen, cardUid[0], cardUid[1], cardUid[2], cardUid[3],
+      //                     cardUid[4], cardUid[5], cardUid[6]); /* Formatting only the leading cardUidLen bytes are meaningful; trailing zeros print harmlessly for 4-byte UIDs. */
+      int len = snprintf((char *)uartMsg, sizeof(uartMsg), "CARD:"); /* Opening with the fixed prefix that the host's serial_listener.py matches via its CARD:<hex> regex. */
+      for (uint8_t uidByteIndex = 0; uidByteIndex < cardUidLen; uidByteIndex++)
+      {
+        len += snprintf((char *)uartMsg + len, sizeof(uartMsg) - (size_t)len, "%02X", cardUid[uidByteIndex]); /* Appending only the cardUidLen bytes that are actually meaningful, so a 4-byte UID is not padded with trailing zeros into the packet. */
+      }
+      len += snprintf((char *)uartMsg + len, sizeof(uartMsg) - (size_t)len, "\r\n");
+      HAL_UART_Transmit(&huart6, uartMsg, (uint16_t)len, HAL_MAX_DELAY);
+      HAL_Delay(500); /* Throttling repeated prints while a card remains resting on the reader. */
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -258,37 +307,37 @@ static void MX_TIM2_Init(void)
 }
 
 /**
-  * @brief USART3 Initialization Function
+  * @brief USART6 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_USART3_UART_Init(void)
+static void MX_USART6_UART_Init(void)
 {
 
-  /* USER CODE BEGIN USART3_Init 0 */
+  /* USER CODE BEGIN USART6_Init 0 */
 
-  /* USER CODE END USART3_Init 0 */
+  /* USER CODE END USART6_Init 0 */
 
-  /* USER CODE BEGIN USART3_Init 1 */
+  /* USER CODE BEGIN USART6_Init 1 */
 
-  /* USER CODE END USART3_Init 1 */
-  huart3.Instance = USART3;
-  huart3.Init.BaudRate = 9600;
-  huart3.Init.WordLength = UART_WORDLENGTH_8B;
-  huart3.Init.StopBits = UART_STOPBITS_1;
-  huart3.Init.Parity = UART_PARITY_NONE;
-  huart3.Init.Mode = UART_MODE_TX_RX;
-  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart3.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart3) != HAL_OK)
+  /* USER CODE END USART6_Init 1 */
+  huart6.Instance = USART6;
+  huart6.Init.BaudRate = 9600;
+  huart6.Init.WordLength = UART_WORDLENGTH_8B;
+  huart6.Init.StopBits = UART_STOPBITS_1;
+  huart6.Init.Parity = UART_PARITY_NONE;
+  huart6.Init.Mode = UART_MODE_TX_RX;
+  huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart6.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart6.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart6.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart6) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN USART3_Init 2 */
+  /* USER CODE BEGIN USART6_Init 2 */
 
-  /* USER CODE END USART3_Init 2 */
+  /* USER CODE END USART6_Init 2 */
 
 }
 
@@ -306,7 +355,7 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
