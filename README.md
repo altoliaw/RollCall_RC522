@@ -9,6 +9,8 @@ This project implements a **wireless, standalone roll-call terminal** intended f
                          [Bluetooth virtual serial port] → [Python host] → [SQLite database]
 ```
 
+![Demo](docs/demo.jpg)
+
 ---
 
 ## Directory Structure
